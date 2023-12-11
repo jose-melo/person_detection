@@ -39,7 +39,7 @@ TfLiteTensor* input = nullptr;
 BLEService ledService("180A"); // BLE LED Service
 
 // BLE LED Switch Characteristic - custom 128-bit UUID, read and writable by central
-BLECharacteristic switchCharacteristic("2A57", BLERead | BLEWrite | BLENotify, 200);
+BLECharacteristic switchCharacteristic("2A57", BLERead | BLEWrite | BLENotify, 50);
 BLEByteCharacteristic imageControlCharacteristic("2A58", BLERead | BLEWrite);
 
 
@@ -133,7 +133,7 @@ void setup() {
   // switchCharacteristic.setEventHandler(BLEWritten, onSwitchCharacteristicWritten);
   switchCharacteristic.setEventHandler(BLESubscribed, onSwitchCharacteristicSubscribed);
   switchCharacteristic.setEventHandler(BLEUnsubscribed, onSwitchCharacteristicUnsubscribed);
-  imageControlCharacteristic.setEventHandler(BLEWritten, onImageControlCharacteristicWritten);
+  //imageControlCharacteristic.setEventHandler(BLEWritten, onImageControlCharacteristicWritten);
 
   // start advertising
   BLE.advertise();
@@ -149,6 +149,8 @@ void loop() {
   if (central) {
     Serial.print("Connectado ao nó central: ");
     Serial.println(central.address());
+    
+
     while (central.connected()) {
       delay(10); // just to avoid super tight loop
     }
@@ -168,7 +170,7 @@ void onImageControlCharacteristicWritten(BLEDevice central, BLECharacteristic ch
     int8_t no_person_score;
 
     switch (imageControlCharacteristic.value()) {
-      case 01:
+      case 1:
         Serial.println("LED on");
         //digitalWrite(LED_BUILTIN, HIGH);
         
@@ -201,7 +203,7 @@ void onImageControlCharacteristicWritten(BLEDevice central, BLECharacteristic ch
 }
 
 void sendImage(int8* image) {
-  const int CHUNK_SIZE = 200;
+  const int CHUNK_SIZE = 50;
   uint8_t buffer[CHUNK_SIZE];
 
   for (int i = 0; i < 96*96; i += CHUNK_SIZE) {
@@ -213,7 +215,7 @@ void sendImage(int8* image) {
 
     switchCharacteristic.writeValue(buffer, CHUNK_SIZE);  // Now it directly takes the buffer
     
-    delay(50);  // Adjust the delay as needed
+    delay(100);  // Adjust the delay as needed
   }
 
   delay(2000);
@@ -234,6 +236,36 @@ void sendImage(int8* image) {
 
 void onSwitchCharacteristicSubscribed(BLEDevice central, BLECharacteristic characteristic) {
   Serial.println(F("Nó central se inscreveu para receber notificações"));
+
+  TfLiteTensor* output;
+    int8_t person_score;
+    int8_t no_person_score;
+
+      Serial.println("LED on");
+        //digitalWrite(LED_BUILTIN, HIGH);
+        
+        // Get image from provider.
+        if (kTfLiteOk != GetImage(error_reporter, kNumCols, kNumRows, kNumChannels,
+                                  input->data.int8)) {
+          TF_LITE_REPORT_ERROR(error_reporter, "Image capture failed.");
+        }
+        
+
+        // Run the model on this input and make sure it succeeds.
+        if (kTfLiteOk != interpreter->Invoke()) {
+          TF_LITE_REPORT_ERROR(error_reporter, "Invoke failed.");
+        }
+
+        output = interpreter->output(0);
+
+        // Process the inference results.
+         person_score = output->data.uint8[kPersonIndex];
+         no_person_score = output->data.uint8[kNotAPersonIndex];
+         RespondToDetection(error_reporter, person_score, no_person_score);
+
+         delay(2000);
+
+        sendImage(input->data.int8);
 }
 
 void onSwitchCharacteristicUnsubscribed(BLEDevice central, BLECharacteristic characteristic) {
