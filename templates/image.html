@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Última Imagem Enviada</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            text-align: center;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        img {
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: box-shadow 0.3s ease-in-out;
+            width: 100%;
+        }
+        img:hover {
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <h1>Última Imagem Enviada</h1>
+        <img id="latestImage" src="{{ url_for('uploaded_file', filename='last_image.jpg') }}" alt="Última Imagem">
+    </div>
+    <script>
+        setInterval(() => {
+            const imageElement = document.getElementById('latestImage');
+            imageElement.src = imageElement.src.split('?')[0] + '?' + new Date().getTime();
+        }, 5000); // Atualiza a imagem a cada 5 segundos
+    </script>
+</body>
+</html>

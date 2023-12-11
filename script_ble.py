@@ -1,3 +1,4 @@
+import cv2
 import numpy as np
 
 import matplotlib.pyplot as plt
@@ -5,11 +6,16 @@ import asyncio
 from bleak import BleakScanner, BleakClient
 from bleak.exc import BleakDBusError
 from tqdm import tqdm
+import requests
+import os
+
 
 DEVICE_NAME = "Nano 33 IoT"
 LED_SERVICE_UUID = "0000180a-0000-1000-8000-00805f9b34fb"
 LED_CHAR_UUID = "00002a57-0000-1000-8000-00805f9b34fb"
 CTL_CHAR_UUID = "00002a58-0000-1000-8000-00805f9b34fb"
+
+UPLOAD_URL = 'http://localhost:5000/upload'
 
 
 IMG_SIZE = 96
@@ -35,6 +41,21 @@ def process_buffer():
             pixel_idx += 1
             progress_bar.update(1)
             if pixel_idx == IMG_SIZE * IMG_SIZE - 1:
+                temp_image_path = 'temp_image.png'
+                cv2.imwrite(temp_image_path, img)
+                
+                with open(temp_image_path, 'rb') as f:
+                    response = requests.post(UPLOAD_URL, files={'file': f})
+                
+                
+                if response.status_code == 200:
+                    print('Upload realizado com sucesso.')
+                else:
+                    print('Falha no upload:', response.text)
+                
+                
+                os.remove(temp_image_path) 
+
                 plt.imshow(img, cmap='gray', vmin=0, vmax=255)
                 plt.show()
                 pixel_idx = -1
