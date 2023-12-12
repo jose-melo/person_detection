@@ -15,7 +15,7 @@ LED_SERVICE_UUID = "0000180a-0000-1000-8000-00805f9b34fb"
 LED_CHAR_UUID = "00002a57-0000-1000-8000-00805f9b34fb"
 CTL_CHAR_UUID = "00002a58-0000-1000-8000-00805f9b34fb"
 
-BASE_URL = 'http://localhost:5000'
+BASE_URL = 'http://192.168.116.10:5000'
 UPLOAD_URL = f'{BASE_URL}/upload'
 DETECT_URL = f'{BASE_URL}/detect'
 
@@ -72,7 +72,7 @@ def process_buffer():
                 image = Image.fromarray(img)
 
                 # Save the image
-                image.save('output.png')
+                image.save(temp_image_path)
                 
                 with open(temp_image_path, 'rb') as f:
                     response = requests.post(UPLOAD_URL, files={'file': f})
@@ -118,32 +118,35 @@ async def run():
                 uuids = adv_dat.service_uuids
                 if len(uuids) > 0 and (LED_SERVICE_UUID in uuids or device.name == DEVICE_NAME):
                     
-                    async with BleakClient(device.address) as client:
-                        print(f"Connected to {device.name}")
-                        is_receiving = True
+                    try:
+                        async with BleakClient(device.address) as client:
+                            print(f"Connected to {device.name}")
+                            is_receiving = True
 
-                        progress_bar = tqdm(total=IMG_SIZE * IMG_SIZE, desc="Receiving Image", position=0, leave=True)
-                        print("Start notify")
-                        try:
-                            await client.start_notify(LED_CHAR_UUID, handle_packet)
-                        except BleakDBusError:
-                            print("Failed to start notify. Trying again...")
-                            await asyncio.sleep(16)
-                            break
+                            progress_bar = tqdm(total=IMG_SIZE * IMG_SIZE, desc="Receiving Image", position=0, leave=True)
+                            print("Start notify")
+                            try:
+                                await client.start_notify(LED_CHAR_UUID, handle_packet)
+                            except:
+                                print("Failed to start notify. Trying again...")
+                                await asyncio.sleep(16)
+                                break
 
-                        while is_receiving: pass
+                            while is_receiving: pass
 
-                        progress_bar.reset()
-                        pixel_idx = -1
-                        recv_buffer = [] 
-                        img = np.zeros((IMG_SIZE, IMG_SIZE), dtype=np.uint8)
+                            progress_bar.reset()
+                            pixel_idx = -1
+                            recv_buffer = [] 
+                            img = np.zeros((IMG_SIZE, IMG_SIZE), dtype=np.uint8)
 
 
-                        print("Stop notify")
-                        await client.stop_notify(LED_CHAR_UUID)
+                            print("Stop notify")
+                            await client.stop_notify(LED_CHAR_UUID)
 
-                        print("Disconnecting...")
-                        await client.disconnect()
+                            print("Disconnecting...")
+                            await client.disconnect()
+                    except:
+                        break
                         
 
         
