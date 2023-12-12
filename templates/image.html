@@ -25,6 +25,15 @@
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             transition: box-shadow 0.3s ease-in-out;
             width: 100%;
+            border: 5px solid transparent; /* Adiciona borda transparente */
+        }
+        /* Classe para borda verde */
+        .person {
+            border-color: green;
+        }
+        /* Classe para borda vermelha */
+        .no-person {
+            border-color: red;
         }
         img:hover {
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
@@ -37,10 +46,25 @@
         <img id="latestImage" src="{{ url_for('uploaded_file', filename='last_image.jpg') }}" alt="Última Imagem">
     </div>
     <script>
+        // Função para atualizar a cor da borda com base na detecção
+        function updateBorderColor(personDetected) {
+            const imageElement = document.getElementById('latestImage');
+            console.log('person detected: ', personDetected);
+            if (personDetected) {
+                imageElement.classList.add('person');
+                imageElement.classList.remove('no-person');
+            } else {
+                imageElement.classList.add('no-person');
+                imageElement.classList.remove('person');
+            }
+        }
+
+        // Atualiza a imagem e a borda a cada 5 segundos
         setInterval(() => {
             const imageElement = document.getElementById('latestImage');
             imageElement.src = imageElement.src.split('?')[0] + '?' + new Date().getTime();
-        }, 5000); // Atualiza a imagem a cada 5 segundos
+            updateBorderColor({{ person_detected | tojson }}); // Passa o estado de detecção para a função
+        }, 3000);
     </script>
 </body>
 </html>

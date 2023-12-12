@@ -274,6 +274,19 @@ void onSwitchCharacteristicSubscribed(BLEDevice central, BLECharacteristic chara
 
         // Process the inference results.
          person_score = output->data.uint8[kPersonIndex];
+         
+        // create an array with the values to send:
+        // CHUNK_SIZE = 96
+        if (person_score > 0) {
+          uint8_t person_score_data[96] = {1};  // Initialize an array with zeros
+          switchCharacteristic.writeValue(person_score_data, 96);
+
+        } else {
+          uint8_t person_score_data[96] = {0};  // Initialize an array with zeros
+          switchCharacteristic.writeValue(person_score_data, 96);
+        }
+
+        
          no_person_score = output->data.uint8[kNotAPersonIndex];
          RespondToDetection(error_reporter, person_score, no_person_score);
 

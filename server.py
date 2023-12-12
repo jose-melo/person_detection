@@ -1,3 +1,4 @@
+import json
 from flask import Flask, request, render_template, send_from_directory
 import os
 
@@ -23,12 +24,29 @@ def upload_file():
         file.save(file_path)
         return 'Imagem recebida com sucesso', 200
 
+
+# Status de detecção de pessoa
+person_detected = False
+
+@app.route('/detect', methods=['POST'])
+def detect_person():
+    global person_detected
+    data = request.json
+    if data and "detected" in data:
+        person_detected = data["detected"]
+        print('person_detected:', person_detected)
+        return json.dumps({'success': True}), 200, {'ContentType': 'application/json'}
+    else:
+        return json.dumps({'success': False}), 400, {'ContentType': 'application/json'}
+
+
+
 # Rota para fornecer a página web com a última imagem
 @app.route('/')
 def show_image():
     image_path = os.path.join(app.config['UPLOAD_FOLDER'], 'last_image.jpg')
     if os.path.exists(image_path):
-        return render_template('image.html', image_path=image_path)
+        return render_template('image.html', image_path=image_path, person_detected=person_detected)
     else:
         return 'Nenhuma imagem disponível', 404
 

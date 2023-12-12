@@ -1,4 +1,4 @@
-import cv2
+from PIL import Image
 import numpy as np
 
 import matplotlib.pyplot as plt
@@ -15,7 +15,9 @@ LED_SERVICE_UUID = "0000180a-0000-1000-8000-00805f9b34fb"
 LED_CHAR_UUID = "00002a57-0000-1000-8000-00805f9b34fb"
 CTL_CHAR_UUID = "00002a58-0000-1000-8000-00805f9b34fb"
 
-UPLOAD_URL = 'http://localhost:5000/upload'
+BASE_URL = 'http://localhost:5000'
+UPLOAD_URL = f'{BASE_URL}/upload'
+DETECT_URL = f'{BASE_URL}/detect'
 
 
 IMG_SIZE = 96
@@ -23,26 +25,54 @@ CHUNK_SIZE = 96  # Adjust as per your actual chunk size
 
 pixel_idx = -1
 is_receiving = False
+is_receiving_score = False
 img = np.zeros((IMG_SIZE, IMG_SIZE), dtype=np.uint8)
 recv_buffer = []  # List to store received bytes
 
 progress_bar = None 
 
 
+def post_detection_status(score):
+    detected = score > 0  
+    data = {'detected': detected}
+    try:
+        response = requests.post(DETECT_URL, json=data)
+        if response.status_code == 200:
+            print('Status de detecção enviado com sucesso')
+        else:
+            print('Falha ao enviar status de detecção')
+    except requests.RequestException as e:
+        print(f'Erro ao enviar status de detecção: {e}')
+
+
+
 def process_buffer():
     global pixel_idx, img, recv_buffer
     global is_receiving
+    global is_receiving_score
     global progress_bar
     while len(recv_buffer) > 0:  # Process all bytes in buffer
         chunk = recv_buffer[:CHUNK_SIZE]  # Extract up to CHUNK_SIZE bytes
         del recv_buffer[:CHUNK_SIZE]  # Remove the processed bytes
+        
+
+        if is_receiving_score:
+            score = int.from_bytes(chunk, byteorder='little')
+            post_detection_status(score)
+            print(f"Score: {score}")
+            is_receiving_score = False
+            is_receiving = False
+            break
         
         for byte in chunk:
             pixel_idx += 1
             progress_bar.update(1)
             if pixel_idx == IMG_SIZE * IMG_SIZE - 1:
                 temp_image_path = 'temp_image.png'
-                cv2.imwrite(temp_image_path, img)
+                image = Image.fromarray(img)
+
+                # Save the image
+                image.save('output.png')
                 
                 with open(temp_image_path, 'rb') as f:
                     response = requests.post(UPLOAD_URL, files={'file': f})
@@ -59,7 +89,7 @@ def process_buffer():
                 #plt.imshow(img, cmap='gray', vmin=0, vmax=255)
                 #plt.show()
                 #progress_bar.reset()
-                is_receiving = False
+                is_receiving_score = True
                 break
             else:
                 img[pixel_idx // IMG_SIZE, pixel_idx % IMG_SIZE] = byte
