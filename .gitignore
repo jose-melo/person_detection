@@ -7,6 +7,7 @@ __pycache__/
 *.so
 
 test.ipynb
+.vscode
 
 # Distribution / packaging
 .Python
